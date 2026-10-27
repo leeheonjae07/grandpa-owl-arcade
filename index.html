@@ -316,6 +316,123 @@
       color: #e2e8f0;
       font-weight: bold;
     }
+
+
+    @media (max-width: 600px) {
+      body {
+        min-height: 100dvh;
+        justify-content: flex-start;
+        padding: max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom));
+      }
+
+      #game-container {
+        width: min(100%, calc((100dvh - 20px) * 4 / 3));
+        flex: 0 0 auto;
+        border-radius: 12px;
+      }
+
+      .overlay {
+        justify-content: flex-start;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding: 10px 12px;
+      }
+
+      .title-koala-preview {
+        width: 44px;
+        height: 44px;
+        margin-bottom: 2px;
+      }
+
+      .game-title {
+        font-size: clamp(20px, 6vw, 30px);
+        line-height: 1.1;
+      }
+
+      .game-subtitle {
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+
+      .card-grid {
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .mode-card {
+        min-width: 0;
+        padding: 8px 4px;
+        gap: 3px;
+        border-radius: 10px;
+      }
+
+      .mode-card .icon { font-size: 21px; }
+      .mode-card .name { font-size: 11px; }
+      .mode-card .desc { font-size: 9px; }
+
+      .options-row {
+        gap: 5px;
+        margin-bottom: 7px;
+        font-size: 11px;
+      }
+
+      .option-pill {
+        padding: 6px 9px;
+        font-size: 11px;
+      }
+
+      .btn-play {
+        padding: 11px 24px;
+        font-size: 16px;
+      }
+
+      .hud {
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        gap: 3px;
+        font-size: 10px;
+      }
+
+      .hud-left, .hud-center, .hud-right { gap: 3px; }
+      .hud-badge { padding: 4px 6px; gap: 3px; }
+      .hud-center .hud-badge { font-size: 12px !important; }
+      .icon-btn { width: 32px; height: 32px; font-size: 14px; }
+
+      .mobile-controls {
+        bottom: max(8px, env(safe-area-inset-bottom));
+        left: 8px;
+        right: 8px;
+      }
+
+      .touch-btn {
+        width: clamp(48px, 14vw, 60px);
+        height: clamp(48px, 14vw, 60px);
+        font-size: 21px;
+      }
+
+      #sandbox-panel {
+        width: calc(100% - 12px);
+        bottom: 6px;
+        padding: 6px;
+        gap: 4px;
+        justify-content: center;
+        flex-wrap: wrap;
+        font-size: 10px;
+      }
+
+      #sandbox-panel .option-pill { padding: 6px 8px; }
+      .instructions-footer { gap: 6px 12px; font-size: 11px; }
+    }
+
+    @media (max-width: 380px) {
+      .mode-card .desc { display: none; }
+      .hud-left #hud-dash, .hud-left #hud-bomb { display: none !important; }
+      .hud-center { position: absolute; top: 38px; left: 4px; }
+      .hud-right { margin-left: auto; }
+      .game-subtitle { max-width: 290px; }
+    }
   </style>
 </head>
 <body>
@@ -1731,15 +1848,18 @@
       if (gameState === STATE.PLAYING) performDash();
     });
 
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      const touch = e.touches[0];
+    function handleCanvasTouch(event) {
+      event.preventDefault();
+      const touch = event.changedTouches[0];
       const pos = getCanvasCoords(touch.clientX, touch.clientY);
       mousePos.x = pos.x;
       mousePos.y = pos.y;
       mousePos.active = true;
       if (gameMode === 'SANDBOX') spawnSandboxKoala(pos.x, pos.y);
-    }, { passive: false });
+    }
+
+    canvas.addEventListener('touchstart', handleCanvasTouch, { passive: false });
+    canvas.addEventListener('touchmove', handleCanvasTouch, { passive: false });
 
     function spawnSandboxKoala(x, y) {
       audio.playSfx('dodge');
@@ -1776,12 +1896,25 @@
     const touchDash = document.getElementById('btn-touch-dash');
     const touchBomb = document.getElementById('btn-touch-bomb');
 
-    touchLeft.addEventListener('touchstart', e => { e.preventDefault(); keys.left = true; });
-    touchLeft.addEventListener('touchend', e => { e.preventDefault(); keys.left = false; });
-    touchRight.addEventListener('touchstart', e => { e.preventDefault(); keys.right = true; });
-    touchRight.addEventListener('touchend', e => { e.preventDefault(); keys.right = false; });
-    touchDash.addEventListener('touchstart', e => { e.preventDefault(); performDash(); });
-    touchBomb.addEventListener('touchstart', e => { e.preventDefault(); useBomb(); });
+    function bindTouchControl(element, onPress, onRelease = () => {}) {
+      element.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        element.setPointerCapture(event.pointerId);
+        onPress();
+      });
+      const release = event => {
+        event.preventDefault();
+        onRelease();
+      };
+      element.addEventListener('pointerup', release);
+      element.addEventListener('pointercancel', release);
+      element.addEventListener('lostpointercapture', onRelease);
+    }
+
+    bindTouchControl(touchLeft, () => { keys.left = true; }, () => { keys.left = false; });
+    bindTouchControl(touchRight, () => { keys.right = true; }, () => { keys.right = false; });
+    bindTouchControl(touchDash, performDash);
+    bindTouchControl(touchBomb, useBomb);
 
     const startMenu = document.getElementById('startMenu');
     const pauseMenu = document.getElementById('pauseMenu');
@@ -1797,9 +1930,7 @@
       gameHud.style.display = gameMode === 'SANDBOX' ? 'none' : 'flex';
       sandboxPanel.style.display = gameMode === 'SANDBOX' ? 'flex' : 'none';
 
-      if ('ontouchstart' in window) {
-        mobileControls.style.display = gameMode === 'SANDBOX' ? 'none' : 'flex';
-      }
+      mobileControls.style.display = gameMode === 'SANDBOX' ? 'none' : 'flex';
 
       gameState = STATE.PLAYING;
       resetGame();
