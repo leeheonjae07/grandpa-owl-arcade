@@ -1930,7 +1930,8 @@
       gameHud.style.display = gameMode === 'SANDBOX' ? 'none' : 'flex';
       sandboxPanel.style.display = gameMode === 'SANDBOX' ? 'flex' : 'none';
 
-      mobileControls.style.display = gameMode === 'SANDBOX' ? 'none' : 'flex';
+      const showTouchControls = window.matchMedia('(max-width: 600px)').matches || navigator.maxTouchPoints > 0;
+      mobileControls.style.display = gameMode === 'SANDBOX' || !showTouchControls ? 'none' : 'flex';
 
       gameState = STATE.PLAYING;
       resetGame();
